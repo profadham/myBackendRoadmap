@@ -1,57 +1,82 @@
 from flask import Flask, jsonify, request
+import logging
 app = Flask(__name__)
 
-students = [{'id':'001', 'name':'Adham'},{'id':'002', 'name':'Yasser'}]
+logging.basicConfig(filename='scraper.log', level=logging.DEBUG,
+format='%(asctime)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S')
 
-@app.route('/', methods=['GET'])
+class Student:
+    def __init__(self, id, name, gpa):
+        self.id = id
+        self.name = name
+        self.gpa = gpa
+    def get_name(self):
+        return slf.name
+    def get_id(self):
+        return self.id
+    def get_gpa(self):
+        return self.get_gpa
+    def set_gpa(self, new_gpa):
+        self.gpa = new_gpa
+    def to_dict(self):
+        return {
+            "student id: ": self.id,
+            "student name: ":self.name,
+            "student GPA: ":self.gpa
+        }
+
+
+'''@app.route('/', methods=['GET'])
 def test():
-    return jsonify({'mes':'hello'})
+    return jsonify({'mes':'hello'})'''
 
-@app.route('/student/<string:id>', methods=['GET']) #for read
+cur_id = 0;
+students = []
+@app.route('/student/<int:id>', methods=['GET'])
 def get_student(id):
-    for student in students:
-        if (student['id']==id):
-            return jsonify(student['name'])
+    my_student = list(filter(lambda student:student.id==id, students))
+    if (my_student):
+        logging.info("GET of student with id=",id)
+        return jsonify(my_student[0].to_dict())
+    logging.info("id: ",id, " was not found")
     return jsonify({'message':'id not found'})
 
 
-@app.route('/student', methods=['POST'])  #for create
+@app.route('/student', methods=['POST'])
 def add_student():
+    global cur_id
     req_data = request.get_json()
-    new_stud = {
-        'id':req_data['id'],
-        'name':req_data['name']
-    }
+    if req_data is None:
+        return jsonify({'message':'invalid data'})
+    cur_id+=1
+    student_name = req_data.get('name', 'Unknown')
+    student_gpa = req_data.get('gpa', 0)
+    new_stud = Student(cur_id,student_name,student_gpa)
     students.append(new_stud)
-    return jsonify(new_stud)
+    logging.info("POST of student with id=",cur_id)
+    return jsonify(new_stud.to_dict())
 
-@app.route('/student/<string:id>', methods=['DELETE'])  #for delete
+@app.route('/student/<int:id>', methods=['DELETE'])
 def delete_student(id):
-    i = 0
-    deleted = False;
-    for student in students:
-        if (student['id']==id):
-            students.pop(i)
-            return jsonify({'message':'deleted successfully'})
-        i+=1
+    my_student = list(filter(lambda student:student.id==id, students))
+    if (my_student):
+        students.remove(my_student[0])
+        logging.info("DELETE of student with id=",id)
+        return jsonify(my_student[0].to_dict())
+    logging.info("id: ",id, " was not found")
     return jsonify({'message':'id not found'})
 
-'''@app.route('/student/<string:id>', methods=['PATCH'])  #for update (updates name of a certain id)
+@app.route('/student/<int:id>', methods=['PUT'])
 def update_student(id):
     req_data = request.get_json()
-    updated = False;
-    for student in students:
-        if (student['id']==id):
-            studen.update(req_data)
-            return jsonify({'message':'updated successfully'})
-    return jsonify({'message':'id not found'})'''
-
-@app.route('/student/<int:idx>', methods=['PUT']) #for update (updates student in a certain index in the table)
-def update_student(idx):
-    if idx < len(students):
-        req_data = request.get_json()
-        students[idx] = req_data
-        return jsonify({'message':'updated successfully'})    
+    my_student = list(filter(lambda student:student.id==id, students))
+    if (my_student):
+        students.remove(my_student[0])
+        my_student[0].set_gpa(req_data.get('gpa', 0.0))
+        students.append(my_student[0])
+        logging.info("PUT of student with id=",id)
+        return jsonify(my_student[0].to_dict())
+    logging.info("id: ",id, " was not found")
     return jsonify({'message':'id not found'})
 
 app.run(port=8000)
